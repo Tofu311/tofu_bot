@@ -63,6 +63,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '857676139805',
     projectId: 'tofu-bot-7de67',
     storageBucket: 'tofu-bot-7de67.firebasestorage.app',
+    androidClientId: '857676139805-72g7u6r0trl09vqq1818c8ue4il90ebn.apps.googleusercontent.com',
+    iosClientId: '857676139805-ogtp0ussv98s6tn4satgit2mdt19odt1.apps.googleusercontent.com',
     iosBundleId: 'com.example.tofuBot',
   );
 
@@ -72,6 +74,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '857676139805',
     projectId: 'tofu-bot-7de67',
     storageBucket: 'tofu-bot-7de67.firebasestorage.app',
+    androidClientId: '857676139805-72g7u6r0trl09vqq1818c8ue4il90ebn.apps.googleusercontent.com',
+    iosClientId: '857676139805-ogtp0ussv98s6tn4satgit2mdt19odt1.apps.googleusercontent.com',
     iosBundleId: 'com.example.tofuBot',
   );
 
@@ -83,4 +87,5 @@ class DefaultFirebaseOptions {
     authDomain: 'tofu-bot-7de67.firebaseapp.com',
     storageBucket: 'tofu-bot-7de67.firebasestorage.app',
   );
+
 }

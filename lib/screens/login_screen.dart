@@ -49,9 +49,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 if (message!.contains('Success')) {
                   await navigatePostLogin(context);
                 }
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(SnackBar(content: Text(message)));
               },
               child: const Text('Login'),
             ),

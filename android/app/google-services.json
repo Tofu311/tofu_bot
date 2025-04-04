@@ -12,7 +12,20 @@
           "package_name": "com.example.tofu_bot"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "857676139805-72g7u6r0trl09vqq1818c8ue4il90ebn.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.tofu_bot",
+            "certificate_hash": "16d1d31687b11bf3c21492bc6e5fd53044af920e"
+          }
+        },
+        {
+          "client_id": "857676139805-uructjahhsn8jgrg7tbu3d892losmos9.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAmb9E6LXrfwBDdHg57GLyE-0bOVMdKoX0"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "857676139805-uructjahhsn8jgrg7tbu3d892losmos9.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "857676139805-ogtp0ussv98s6tn4satgit2mdt19odt1.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.tofuBot"
+              }
+            }
+          ]
         }
       }
     }
