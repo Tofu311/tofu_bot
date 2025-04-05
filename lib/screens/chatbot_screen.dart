@@ -31,15 +31,8 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   void initState() {
     super.initState();
     _provider.addListener(_saveHistory);
-
-    final user = _auth.currentUser;
-    if (user != null) {
-      _loadSessions().then((_) {
-        if (_currentSessionId == null) {
-          _startNewSession(); // create one if none exist
-        }
-      });
-    }
+    _startNewSession(); // Always start a fresh session on app load
+    _loadSessions();
   }
 
   @override
@@ -52,35 +45,51 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     final user = _auth.currentUser;
     if (user == null) return;
 
-    final snapshot =
-        await _firestore
-            .collection('users')
-            .doc(user.uid)
-            .collection('sessions')
-            .orderBy('createdAt', descending: true)
-            .get();
+    final snapshot = await _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('sessions')
+        .orderBy('createdAt', descending: true)
+        .get();
 
     setState(() {
       _sessions = snapshot.docs;
     });
-
-    if (_sessions.isNotEmpty) {
-      _loadSession(_sessions.first.id);
-    }
   }
 
   Future<void> _startNewSession() async {
     final user = _auth.currentUser;
     if (user == null) return;
 
+    // Before starting a new session, check if the current one is empty
+    if (_currentSessionId != null) {
+      final messagesSnapshot = await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .collection('sessions')
+          .doc(_currentSessionId)
+          .collection('messages')
+          .limit(1)
+          .get();
+
+      if (messagesSnapshot.docs.isEmpty) {
+        await _firestore
+            .collection('users')
+            .doc(user.uid)
+            .collection('sessions')
+            .doc(_currentSessionId)
+            .delete();
+      }
+    }
+
     final newSessionRef = await _firestore
         .collection('users')
         .doc(user.uid)
         .collection('sessions')
         .add({
-          'createdAt': Timestamp.now(),
-          'title': 'New Chat ${DateTime.now().toLocal().toIso8601String()}',
-        });
+      'createdAt': Timestamp.now(),
+      'title': 'New Chat ${DateTime.now().toLocal().toIso8601String()}'
+    });
 
     _currentSessionId = newSessionRef.id;
     _lastSavedMessageCount = 0;
@@ -95,21 +104,19 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     final user = _auth.currentUser;
     if (user == null) return;
 
-    final snapshot =
-        await _firestore
-            .collection('users')
-            .doc(user.uid)
-            .collection('sessions')
-            .doc(sessionId)
-            .collection('messages')
-            .orderBy('timestamp')
-            .get();
+    final snapshot = await _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('sessions')
+        .doc(sessionId)
+        .collection('messages')
+        .orderBy('timestamp')
+        .get();
 
-    final history =
-        snapshot.docs.map((doc) {
-          final data = doc.data();
-          return ChatMessage.fromJson(Map<String, dynamic>.from(data['json']));
-        }).toList();
+    final history = snapshot.docs.map((doc) {
+      final data = doc.data();
+      return ChatMessage.fromJson(Map<String, dynamic>.from(data['json']));
+    }).toList();
 
     setState(() {
       _provider.history = history;
@@ -136,7 +143,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
 
     if (_lastSavedMessageCount >= historyList.length) return;
 
-    final newMessages = historyList.sublist(_lastSavedMessageCount); // unsaved ones
+    final newMessages = historyList.sublist(_lastSavedMessageCount);
 
     for (final msg in newMessages) {
       await messagesRef.add({
@@ -165,12 +172,22 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
         child: ListView(
           children: [
             const DrawerHeader(child: Text("Chat Sessions")),
-            ..._sessions.map(
-              (doc) => ListTile(
-                title: Text(doc.data()['title'] ?? 'Untitled Session'),
-                onTap: () => _loadSession(doc.id),
-              ),
+            ListTile(
+              leading: const Icon(Icons.add),
+              title: const Text("Start New Session"),
+              onTap: () {
+                Navigator.of(context).pop();
+                _startNewSession();
+              },
             ),
+            const Divider(),
+            ..._sessions.map((doc) => ListTile(
+                  title: Text(doc.data()['title'] ?? 'Untitled Session'),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    _loadSession(doc.id);
+                  },
+                )),
           ],
         ),
       ),
@@ -184,4 +201,4 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
       ),
     );
   }
-}
+} 
