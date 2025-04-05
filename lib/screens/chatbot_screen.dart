@@ -23,12 +23,23 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  String? _currentSessionId;
+  List<QueryDocumentSnapshot<Map<String, dynamic>>> _sessions = [];
+  int _lastSavedMessageCount = 0;
 
   @override
   void initState() {
     super.initState();
     _provider.addListener(_saveHistory);
-    _loadHistory();
+
+    final user = _auth.currentUser;
+    if (user != null) {
+      _loadSessions().then((_) {
+        if (_currentSessionId == null) {
+          _startNewSession(); // create one if none exist
+        }
+      });
+    }
   }
 
   @override
@@ -37,57 +48,134 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     super.dispose();
   }
 
-  Future<void> _loadHistory() async {
-    final user = FirebaseAuth.instance.currentUser;
+  Future<void> _loadSessions() async {
+    final user = _auth.currentUser;
     if (user == null) return;
 
     final snapshot =
-        await FirebaseFirestore.instance
+        await _firestore
             .collection('users')
             .doc(user.uid)
-            .collection('chats')
+            .collection('sessions')
+            .orderBy('createdAt', descending: true)
+            .get();
+
+    setState(() {
+      _sessions = snapshot.docs;
+    });
+
+    if (_sessions.isNotEmpty) {
+      _loadSession(_sessions.first.id);
+    }
+  }
+
+  Future<void> _startNewSession() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    final newSessionRef = await _firestore
+        .collection('users')
+        .doc(user.uid)
+        .collection('sessions')
+        .add({
+          'createdAt': Timestamp.now(),
+          'title': 'New Chat ${DateTime.now().toLocal().toIso8601String()}',
+        });
+
+    _currentSessionId = newSessionRef.id;
+    _lastSavedMessageCount = 0;
+
+    setState(() {
+      _provider.history = [];
+      _loadSessions();
+    });
+  }
+
+  Future<void> _loadSession(String sessionId) async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    final snapshot =
+        await _firestore
+            .collection('users')
+            .doc(user.uid)
+            .collection('sessions')
+            .doc(sessionId)
+            .collection('messages')
             .orderBy('timestamp')
             .get();
 
-    final history = <ChatMessage>[];
+    final history =
+        snapshot.docs.map((doc) {
+          final data = doc.data();
+          return ChatMessage.fromJson(Map<String, dynamic>.from(data['json']));
+        }).toList();
 
-    for (final doc in snapshot.docs) {
-      final data = doc.data();
-      if (data.containsKey('json')) {
-        history.add(
-          ChatMessage.fromJson(Map<String, dynamic>.from(data['json'])),
-        );
-      }
-    }
-
-    _provider.history = history;
+    setState(() {
+      _provider.history = history;
+      _currentSessionId = sessionId;
+      _lastSavedMessageCount = history.length;
+    });
   }
 
   Future<void> _saveHistory() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+    final user = _auth.currentUser;
+    if (user == null || _currentSessionId == null) {
+      print('No user or session ID.');
+      return;
+    }
 
-    final collection = FirebaseFirestore.instance
+    final messagesRef = _firestore
         .collection('users')
         .doc(user.uid)
-        .collection('chats');
+        .collection('sessions')
+        .doc(_currentSessionId)
+        .collection('messages');
 
-    final history = _provider.history.toList();
+    final historyList = _provider.history.toList();
 
-    for (var i = 0; i < history.length; ++i) {
-      final msg = history[i];
-      final json = msg.toJson();
+    if (_lastSavedMessageCount >= historyList.length) return;
 
-      await collection.add({'json': json, 'timestamp': Timestamp.now()});
+    final newMessages = historyList.sublist(_lastSavedMessageCount); // unsaved ones
+
+    for (final msg in newMessages) {
+      await messagesRef.add({
+        'json': msg.toJson(),
+        'timestamp': Timestamp.now(),
+      });
     }
+
+    _lastSavedMessageCount = historyList.length;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Tofu Chatbot")),
+      appBar: AppBar(
+        title: const Text("Tofu Chatbot"),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: _startNewSession,
+            tooltip: 'Start New Chat Session',
+          ),
+        ],
+      ),
+      drawer: Drawer(
+        child: ListView(
+          children: [
+            const DrawerHeader(child: Text("Chat Sessions")),
+            ..._sessions.map(
+              (doc) => ListTile(
+                title: Text(doc.data()['title'] ?? 'Untitled Session'),
+                onTap: () => _loadSession(doc.id),
+              ),
+            ),
+          ],
+        ),
+      ),
       body: LlmChatView(
-        suggestions: [
+        suggestions: const [
           'How do I sign up for a GMail account?',
           'What is phishing?',
           'What is the difference between Wi-Fi and Ethernet?',
