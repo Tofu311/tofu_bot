@@ -16,3 +16,5 @@ export const deleteAuthUserOnFirestoreDelete = onDocumentDeleted("users/{uid}", 
     console.error(`Error deleting user: ${uid}`, err);
   }
 });
+
+export {getNotionPageList} from "./notion";
